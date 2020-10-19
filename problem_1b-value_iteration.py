@@ -1,0 +1,59 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+"parameters"
+K = 15
+all_A_t = np.arange(1,6)
+prob_A_t = 1 / len(all_A_t)
+c_f = 100
+c_h = 2
+max_people_in_station = 200
+gamma = 0.95
+num_actions = 2
+tol = 1e-6
+
+"action a=0: don't dispatch shuttle"
+"action a=1: dispatch shuttle"
+
+def new_state(s, A_t, a):
+    if a == 0:
+        new = np.minimum(s + A_t, max_people_in_station)
+    elif a == 1:
+        new = np.minimum(np.maximum(0, s-K)+A_t, max_people_in_station)
+    return new
+        
+def reward(s, a):
+    if a == 0:
+        r = -c_h * s
+    elif a == 1:
+        num_people_left_in_station = np.maximum(0, s - K)
+        r = -c_f - c_h * num_people_left_in_station
+    return r
+    
+V_old = np.zeros(max_people_in_station+1)
+V_new = np.zeros(max_people_in_station+1)
+rhs = np.zeros(num_actions)
+
+counter = 0
+error = 99
+while error > tol:
+    for s in range(max_people_in_station+1):
+        for a in range(num_actions):
+            E = 0
+            for A_t in all_A_t:
+                E += prob_A_t * V_old[new_state(s, A_t, a)]         
+            rhs[a] = reward(s, a) + gamma*E
+        V_new[s] = np.amax(rhs)
+    
+    error = np.linalg.norm(V_new-V_old, ord=np.inf)
+    V_old = np.copy(V_new)
+    
+    counter += 1
+    print(counter, error)
+          
+plt.figure(figsize = (8, 6))
+plt.plot(V_new)
+plt.xlabel('s = customers waiting', fontsize = 20)
+plt.ylabel('V(s)', fontsize = 20)
+plt.savefig('problem_1b-value_iteration.png')
+plt.close()
